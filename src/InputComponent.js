@@ -24,12 +24,13 @@ class InputComponent extends Component{
 	removeDestination(e){
 		e.preventDefault();
 		this.setState({ numChildren: this.state.numChildren - 1 });
+//		this.props.updateMainState();
 	}
 
 	render(){
 		const children = [];
 		for(let i = 0; i < this.state.numChildren; i++){			
-			children.push(<InputBox key = { i } index = { i + 1  } numDestination = { this.state.numChildren } addMarker={ this.props.addMarker } showMarker={ this.props.showMarker } hideMarker={ this.props.hideMarker }  removeMarker = { this.props.removeMarker } changeMarker = { this.props.changeMarker } markers = { this.props.markers } renderRoute = { this.props.renderRoute } />)
+			children.push(<InputBox key = { i } index = { i + 1  } numDestination = { this.state.numChildren } addMarker={ this.props.addMarker } showMarker={ this.props.showMarker } hideMarker={ this.props.hideMarker }  removeMarker = { this.props.removeMarker } changeMarker = { this.props.changeMarker } markers = { this.props.markers } renderRoute = { this.props.renderRoute } removeRoute = { this.props.removeRoute }  />)
 		}
 
 		return (

@@ -75,7 +75,7 @@ class TaxTable extends Component{
 						<tr>
 							<th className="size">State</th>
 							<th className="size">IFTA miles</th>
-							<th className="size">MPG { ' ' } <input type="text" style={{ minWidth: "25px" }} className="size" value={ this.state.mpg } onChange={ this.onMpgAdd }></input></th>
+							<th className="size">MPG { ' ' } <input type="number" step="0.01" style={{ minWidth: "33px" }} className="size" value={ this.state.mpg } onChange={ this.onMpgAdd }></input></th>
 							<th className="size">Taxable gallons</th>
 							<th className="size">Tax paid gallons</th>
 							<th className="size">Net taxable gallons</th>

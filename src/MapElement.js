@@ -21,11 +21,13 @@ class MapElement extends Component {
 			mapDiv: {},
 			milesTable: [],
 			request: [],
-			url: {},
+			directionRenderers: [],
+			url: [],
 			totalMiles: []
 		}
 
 		this.renderRoute = this.renderRoute.bind(this);
+		this.removeRoute = this.removeRoute.bind(this);
 		this.addMarker = this.addMarker.bind(this);
 		this.showMarker = this.showMarker.bind(this);
 		this.removeMarker = this.removeMarker.bind(this);
@@ -46,6 +48,7 @@ class MapElement extends Component {
     }
 	
 	addMarker({ address, position }, index){
+//		console.log('adding marker', index);
 		this.state.bounds.extend(position);
 		this.state.map.fitBounds(this.state.bounds);
 		let marker = new google.maps.Marker( { position: position } );
@@ -88,11 +91,11 @@ class MapElement extends Component {
 //				console.log('before splice -  marker, and this.state.markers',  mrk, this.state.markers);
 
 				if( (index === 0 || index === 1) && flag ){
-					console.log('before remove', this.state.markers, index);
+//					console.log('before remove', this.state.markers, index);
 					this.removeMarker( _index );
-					console.log('after remove, before add', this.state.markers);
+//					console.log('after remove, before add', this.state.markers);
 					this.addMarker( marker, index )
-					console.log('after add', this.state.markers);
+//					console.log('after add', this.state.markers);
 				}else{
 					this.state.markers.splice(_index, 1, marker);
 //					console.log('after splice', this.state.markers);
@@ -102,11 +105,71 @@ class MapElement extends Component {
 	}
 
 	renderRoute(request, url){
-		this.setState( { request: request } )
-		this.setState( { url: url } )
-	//	console.log(this.state);
+//		let obj = Object.assign({}, requests)
+		this.setState( { request } )
+		this.setState( { url } )
+		console.log('renderRoute',this.state);
 	}
 
+	generateRoute(){
+		let request = this.state.request;
+		let map = this.state.map;
+//		console.log('mapElement - request',request);
+		let dirRenderers = [];
+		let dirRenderersOrdered = [];
+
+		for(let i = 0; i < request.length; i++){
+			let req = request[i];
+			let directionsService = new google.maps.DirectionsService();
+//			console.log('req, request.lengh', req, request.length);
+		
+			directionsService.route(req, function(result, status){
+				if(status === 'OK'){
+					let directionDisplay = new google.maps.DirectionsRenderer({
+						suppressMarkers: true
+//						draggable: true	
+					});
+					directionDisplay.addListener('directions_changed', function(){
+				//	directionDisplay.setMap(map);
+				//	directionDisplay.setDirections(result);
+					})
+				
+					//directionDisplay.setMap(map);
+					directionDisplay.setDirections(result);
+					dirRenderers.push(directionDisplay);
+					//console.log('dirrenderers ', directionRenderers);					
+					
+					if(dirRenderers.length === request.length){
+						let index = 0;
+						for(let j = 0; j < dirRenderers.length; j++){
+							dirRenderers[j].setMap(map);
+//							console.log('checkinnn', dirRenderers[j].directions.request.origin.query, request[index].origin)
+							while( dirRenderers[j].directions.request.origin.query != request[index].origin ){
+								index++;
+							}
+							dirRenderersOrdered[index] = dirRenderers[j];
+							index = 0;
+						}
+					}	
+					
+				}
+			})	
+
+		}
+		this.state.directionRenderers = dirRenderersOrdered;
+//		console.log('this.state.dirRend', this.state.directionRenderers);
+	}
+
+	removeRoute(){
+		var len = this.state.directionRenderers.length - 1;
+//		console.log('len', len);
+		if(len > -1){
+			this.state.directionRenderers[len].setMap(null);
+			this.state.directionRenderers.splice(len, 1);
+		}
+//		console.log('after removing dirRend ', this.state.directionRenderers);
+	}
+/*	
 	generateRoute(){
 		let request = this.state.request;
 		let map = this.state.map;
@@ -127,32 +190,81 @@ class MapElement extends Component {
 		})
 	}
 
+*/
 	generateMileage(){
-		let url = this.state.url;
-		axios.get('/api', { params: url })
-		.then( result => {
-//				console.log('result.data from /api', result.data)
-				let stateMiles = [];
-				let totalMiles = result.data.reduce( (memo, obj) => {
-					let endPosition = obj.miles.indexOf('mi');
-					let miles = Number(obj.miles.substring(0, endPosition));
-					stateMiles.push({ state: obj.state, miles: miles });
-					return memo += miles;
+		let urls = this.state.url;
+		let tmpTotal = 0;
+		let tmpMiles = [];
+		let resultState = '';
+		let resultMiles = 0;
+		let found = false;
+
+//		console.log('urls', urls);
+		for( let i = 0; i < urls.length; i++ ){
+			console.log('urls, i: ', urls[i],i)
+			axios.get('/api', { params: urls[i] })
+			.then( result => {
+//					console.log('result.data from /api', result.data)
+					let stateMiles = [];
+					let totalMiles = result.data.reduce( (memo, obj) => {
+						let endPosition = obj.miles.indexOf('mi');
+						let miles = Number(obj.miles.substring(0, endPosition));
+						stateMiles.push({ state: obj.state, miles: miles });
+						return memo += miles;
+						
+					},0);
+					totalMiles = Math.round( totalMiles * 100 ) / 100;	
+					tmpTotal += totalMiles;
+		
+					console.log(stateMiles, 'stateMiles');
+					for(let j = 0; j < stateMiles.length; j++){	
+						//let keys = Object.keys(stateMiles[j]);
+						if( Array.isArray( stateMiles[j].state)){
+							resultState = stateMiles[j].state[0]
+						}else{
+							resultState = stateMiles[j].state;
+						}
+						resultMiles = Math.round( stateMiles[j].miles * 100 ) / 100;
+						console.log(resultMiles, resultState, j);
 					
-				},0);
-				
-				this.setState({ totalMiles: totalMiles });	
-				this.setState({ milesTable: stateMiles });
-//				console.log('this.state',this.state);
-		})
+
+						for( let k = 0; k < tmpMiles.length; k++){
+							if( tmpMiles[k].state === resultState ){
+								tmpMiles[k].miles += resultMiles;
+								tmpMiles[k].miles = Math.round( tmpMiles[k].miles * 100 ) / 100;
+								console.log('tmpmiles in loop:', tmpMiles);
+								found = true;
+								break;
+							}
+						}
+
+						if(!found || tmpMiles.length == 0){
+							tmpMiles.push( { state: resultState, miles: resultMiles } );
+							
+							console.log('tmpmiles in not found', tmpMiles);
+						}else{
+							found = false;
+						}
+					}	
+//					console.log('totalMiles, stateMiles', totalMiles, stateMiles)
+//					console.log('this.state',this.state);
+					if( i == urls.length - 1 ){
+					   	this.setState( { totalMiles: tmpTotal } );
+						this.setState( { milesTable: tmpMiles } );
+					}
+			})
+		}
+		
+		//console.log('this.state.miles.states', this.state)
 	}
 
 	render(){
+//		console.log('mapel', this.state);
 		return (
 		  <div className="row">
 			<div id="mapDiv" className="col-xs-12" style={{ height: "350px", marginBottom: '20px' }}>
 			</div>
-			<InputComponent renderRoute = { this.renderRoute } markers = { this.state.markers } addMarker = { this.addMarker } showMarker = { this.showMarker } removeMarker = { this.removeMarker }  hideMarker={ this.hideMarker } changeMarker = { this.changeMarker }  milesTable = { this.state.milesTable } generateMileage = { this.generateMileage} generateRoute = { this.generateRoute } totalMiles = { this.state.totalMiles }/>
+			<InputComponent updateMainState = { this.updateMainState } renderRoute = { this.renderRoute } removeRoute = { this.removeRoute } markers = { this.state.markers } addMarker = { this.addMarker } showMarker = { this.showMarker } removeMarker = { this.removeMarker }  hideMarker={ this.hideMarker } changeMarker = { this.changeMarker }  milesTable = { this.state.milesTable } generateMileage = { this.generateMileage} generateRoute = { this.generateRoute } totalMiles = { this.state.totalMiles }/>
 			<TaxTable milesTable = { this.state.milesTable } />	
    	      </div>
 

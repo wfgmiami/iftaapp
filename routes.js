@@ -7,9 +7,11 @@ router.get('/',(req,res,next)=>{
 	//console.log('hit api route',req.query[0]);
 
 	getRoute(req.query[0], (error, response, body) => {
+		
 		if(!error && response.statusCode == 200){
 			decodePoints(body, (err, result) => {
 				if(!err){
+					console.log('result', result);
 					getStateMiles(result, (err, stateMiles) => {
 						if(!err){
 							res.json(stateMiles);
@@ -25,7 +27,7 @@ router.get('/',(req,res,next)=>{
 			})	
 		}else{
 			console.log('in routes.js error returned from getRoute');
-			res.statusCode(403);
+			response.statusCode(403);
 		}
  	})
 })
